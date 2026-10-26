@@ -4,20 +4,22 @@ A lightweight macOS menu bar app that shows your Cursor plan usage and how much 
 
 No browser tab, no manual cookie paste — Cursor Gauge reads your session from the local Cursor IDE database and fetches usage from Cursor's dashboard API.
 
+![Cursor Gauge panel](docs/screenshot.png)
+
 Cursor Gauge is a fork of [CursorBar](https://github.com/c-johannesen/cursorbar) by [c-johannesen](https://github.com/c-johannesen).
 
 ## Features
 
-- **Menu bar icon** — a system gauge symbol plus the figures you turn on in Settings. A yellow badge means an agent needs input. The quota percent turns red when you are over. With every switch off, only the gauge remains
+- **Menu bar icon** — a system gauge symbol plus the figures you turn on in Settings. A yellow badge means an agent needs input. With every switch off, only the gauge remains
 - **Configurable menu bar** — Settings chooses gauge, quota percent, agent badge, today percent, remaining money, and overspend. The dropdown still shows the full panel
 - **Languages** — System, Thai, or English. Dates and currency follow the Mac
-- **Daily utilization** — today's spend, from local midnight, measured against a daily budget (total quota / working days in the billing cycle)
-- **Usage breakdown** — dollar amounts used, total credits (including bonus), and remaining balance
-- **Overspend tracking** — shows charges beyond included credits and on-demand spend with budget/remaining
+- **Daily utilization** — today's spend, from local midnight, measured against a daily budget (total quota / working days in the billing cycle). Near the daily budget turns yellow; over 100% turns red
+- **Pool breakdown** — shows the included balance, the Composer / Cursor Models pool ($200 individual floor), and the API / Other Models pool (`plan.limit`, $20 on Pro)
+- **Models & tokens** — top models by spend this cycle, plus cycle and all-time token totals from your public Cursor profile
+- **Overspend tracking** — shows charges beyond the included pool ($200 + the Other Models cap on individual plans) and on-demand spend with budget/remaining
 - **Billing cycle info** — current period dates and days until reset
-- **Auto-refresh** — on launch and every 5 minutes
-- **Manual refresh** — click Refresh in the dropdown anytime
-- **Built-in updates** — checks GitHub for new versions on startup, with a manual check button and one-click update from the dropdown
+- **Auto-refresh** — on launch and every 5 minutes, with a manual Refresh button anytime
+- **Built-in updates** — checks GitHub Releases on startup, with a manual check button and one-click update from Settings
 
 ## Requirements
 
@@ -76,14 +78,16 @@ bash scripts/launch.sh
 **Menu bar**
 
 - Yellow badge — that many agents need your input
-- Red quota percent — included usage is at or over the limit, or there is overspend
+- Yellow today percent — today's spend is at 90–100% of the daily budget
+- Red quota or today percent — quota is at or over 100% (or there is overspend), or today's spend is over 100%
 - Dim gauge — nothing is running and quota is 0%
 
 Agent status is read from local Cursor IDE data (transcripts and `state.vscdb`). Cloud agent status and plan/input flags can lag the UI by a minute or two because the IDE debounces writes to disk. Click an agent under **Needs input** to focus it in the Cursor app.
 
 **Color in the panel**
 
-- Red value — that meter is at 100% or the daily budget is over 100%
+- Yellow value — today's spend is at 90–100% of the daily budget
+- Red value — a pool is at 100% or today's spend is over 100%
 
 **Auto-refresh:** immediately on launch, then every **5 minutes** while the app is running.
 
@@ -104,7 +108,7 @@ Common issues:
 | Problem | Fix |
 |---------|-----|
 | `!` in menu bar | Make sure Cursor is installed and you're signed in, then click **Refresh** |
-| App won't open from Finder | Run `bash scripts/launch.sh` — it clears Gatekeeper quarantine flags |
+| App won't open from Finder | Run `bash scripts/launch.sh` or `xattr -cr "/Applications/Cursor Gauge.app"` — clears Gatekeeper quarantine flags |
 | `Swift is not installed` | Run `xcode-select --install` |
 | `No auth token found` | Sign out and back into Cursor, then relaunch Cursor Gauge |
 | `Could not parse auth token` | Update Cursor Gauge. Current Cursor seals the login token; signing in again does not turn it back into a JWT. If macOS asks, allow Keychain access to **Cursor Safe Storage** |
@@ -114,7 +118,7 @@ Common issues:
 1. Reads `cursorAuth/accessToken` from Cursor's local SQLite database  
    `~/Library/Application Support/Cursor/User/globalStorage/state.vscdb`
 2. If Cursor sealed the token (`cursor-safe-storage:v1:`), decrypts it with the **Cursor Safe Storage** keychain item, then derives a session cookie from the JWT
-3. Calls `GET https://cursor.com/api/usage-summary`
+3. Calls `GET https://cursor.com/api/usage-summary`, `POST https://cursor.com/api/dashboard/get-filtered-usage-events`, and your public Cursor profile for token totals
 
 The token is read fresh on every refresh and is **never stored** by Cursor Gauge.
 
@@ -130,6 +134,9 @@ bash scripts/package.sh
 # Build, install to /Applications, and launch
 bash scripts/package.sh --install --open
 
+# Run self-checks
+.build/release/CursorGauge --self-check
+
 # Verify API access
 .build/release/CursorGauge --status
 ```
@@ -138,16 +145,24 @@ Project layout:
 
 ```
 Sources/CursorGauge/
-  App.swift           # MenuBarExtra UI
-  AgentMonitor.swift  # Live agent count & needs-input detection
-  TokenProvider.swift # Read auth from Cursor IDE DB
-  CursorAPI.swift     # Fetch usage-summary
-  UsageStore.swift    # Refresh timer & display state
-  UpdateChecker.swift # GitHub release updates
+  App.swift                   # MenuBarExtra entry point & CLI flags
+  PanelView.swift             # Dropdown panel & Settings view
+  MenuBarStatus.swift         # Menu bar gauge, figures, and badge
+  MenuBarChrome.swift         # Menu bar luminance sampling
+  MenuBarChromeMonitor.swift  # Dark/light menu bar observer
+  L10n.swift                  # English & Thai strings
+  AgentMonitor.swift          # Live agent count & needs-input detection
+  TokenProvider.swift         # Read & decrypt auth from Cursor IDE DB
+  CursorAPI.swift             # Fetch usage summary, events, and profile tokens
+  UsageSummary+Resolved.swift # Pool limits & credit floors
+  UsageMath.swift             # Daily pace, model ranking, and self-checks
+  UsageStore.swift            # Refresh timer & display state
+  UpdateChecker.swift         # GitHub release updates
 scripts/
-  install.sh          # One-step install
-  launch.sh           # Start the app
-  package.sh          # Build .app bundle
+  install.sh                  # One-step build & install
+  launch.sh                   # Start the app
+  package.sh                  # Build .app bundle
+  release.sh                  # Package release zip & tag
 ```
 
 ## Limitations
@@ -155,7 +170,7 @@ scripts/
 - Uses Cursor's **undocumented** dashboard API — may break without notice
 - Agent status is inferred from local IDE files — may lag the UI or miss edge cases
 - Individual Cursor accounts only (reads your local IDE session)
-- Not signed with an Apple Developer ID — first launch may require right-click → Open, or use `scripts/launch.sh`
+- Not signed with an Apple Developer ID — first launch may require right-click → Open, `xattr -cr`, or `scripts/launch.sh`
 
 ## Contributing
 
