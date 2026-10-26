@@ -2,7 +2,8 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-APP_NAME="CursorBar"
+APP_NAME="Cursor Gauge"
+PRODUCT="CursorGauge"
 BUILD_DIR="$ROOT/.build/release"
 APP_BUNDLE="$ROOT/$APP_NAME.app"
 VERSION="${VERSION:-2.0.0}"
@@ -18,7 +19,8 @@ rm -rf "$APP_BUNDLE"
 mkdir -p "$APP_BUNDLE/Contents/MacOS"
 mkdir -p "$APP_BUNDLE/Contents/Resources"
 
-cp "$BUILD_DIR/$APP_NAME" "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
+cp "$BUILD_DIR/$PRODUCT" "$APP_BUNDLE/Contents/MacOS/$PRODUCT"
+cp "$ROOT/Resources/AppIcon.icns" "$APP_BUNDLE/Contents/Resources/AppIcon.icns"
 
 cat > "$APP_BUNDLE/Contents/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -28,13 +30,17 @@ cat > "$APP_BUNDLE/Contents/Info.plist" <<EOF
     <key>CFBundleDevelopmentRegion</key>
     <string>en</string>
     <key>CFBundleExecutable</key>
-    <string>CursorBar</string>
+    <string>${PRODUCT}</string>
     <key>CFBundleIdentifier</key>
-    <string>com.cursorbar.app</string>
+    <string>com.cursorgauge.app</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
-    <string>CursorBar</string>
+    <string>Cursor Gauge</string>
+    <key>CFBundleDisplayName</key>
+    <string>Cursor Gauge</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>

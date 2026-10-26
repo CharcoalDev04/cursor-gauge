@@ -25,7 +25,6 @@ struct PanelView: View {
         }
         .padding(14)
         .frame(width: 300, alignment: .leading)
-        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
     }
 
     private var main: some View {
@@ -139,7 +138,7 @@ struct PanelView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 3) {
             HStack {
-                Text("CursorBar")
+                Text("Cursor Gauge")
                     .font(.headline)
                 Spacer()
                 Text(planName)

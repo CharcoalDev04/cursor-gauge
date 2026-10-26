@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for your interest in CursorBar!
+Thanks for your interest in Cursor Gauge!
 
 ## How to contribute
 
@@ -18,7 +18,7 @@ Only the repository owner can merge pull requests and push to `main`. External c
 ## Before submitting
 
 - Test locally with `bash scripts/install.sh` or `bash scripts/package.sh`
-- Verify API access: `.build/release/CursorBar --status`
+- Verify API access: `.build/release/CursorGauge --status`
 
 ## Branch protection
 

@@ -15,9 +15,9 @@ enum UpdateError: Error, LocalizedError {
         case .noAsset:
             "No download found in the latest release."
         case .badArchive:
-            "Downloaded archive did not contain CursorBar.app."
+            "Downloaded archive did not contain Cursor Gauge.app."
         case .notInstalledAsApp:
-            "CursorBar is not running from an app bundle."
+            "Cursor Gauge is not running from an app bundle."
         case .processFailed:
             "Update helper command failed."
         }
@@ -40,7 +40,7 @@ final class UpdateChecker: ObservableObject {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.0.0"
 
     private static let latestReleaseURL =
-        URL(string: "https://api.github.com/repos/CharcoalDev04/cursorbar/releases/latest")!
+        URL(string: "https://api.github.com/repos/CharcoalDev04/cursor-gauge/releases/latest")!
 
     init() {
         Task { await checkForUpdates(announceResult: false) }
@@ -103,13 +103,13 @@ final class UpdateChecker: ObservableObject {
 
             let (tempZip, _) = try await URLSession.shared.download(from: update.zipURL)
             let extractDir = FileManager.default.temporaryDirectory
-                .appendingPathComponent("cursorbar-update-\(UUID().uuidString)")
+                .appendingPathComponent("cursorgauge-update-\(UUID().uuidString)")
             try FileManager.default.createDirectory(at: extractDir, withIntermediateDirectories: true)
             defer { try? FileManager.default.removeItem(at: extractDir) }
 
             try await Self.runProcess("/usr/bin/ditto", ["-x", "-k", tempZip.path, extractDir.path])
 
-            let newApp = extractDir.appendingPathComponent("CursorBar.app")
+            let newApp = extractDir.appendingPathComponent("Cursor Gauge.app")
             guard FileManager.default.fileExists(atPath: newApp.path) else {
                 throw UpdateError.badArchive
             }

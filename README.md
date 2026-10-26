@@ -1,10 +1,10 @@
-# CursorBar
+# Cursor Gauge
 
 A lightweight macOS menu bar app that shows your Cursor plan usage and how much you have left this billing cycle.
 
-No browser tab, no manual cookie paste — CursorBar reads your session from the local Cursor IDE database and fetches usage from Cursor's dashboard API.
+No browser tab, no manual cookie paste — Cursor Gauge reads your session from the local Cursor IDE database and fetches usage from Cursor's dashboard API.
 
-![CursorBar dropdown showing agent status, needs-input alerts, usage breakdown by category, daily utilization, and billing cycle](docs/screenshot.png)
+Cursor Gauge is a fork of [CursorBar](https://github.com/c-johannesen/cursorbar) by [c-johannesen](https://github.com/c-johannesen).
 
 ## Features
 
@@ -27,39 +27,38 @@ No browser tab, no manual cookie paste — CursorBar reads your session from the
 
 ## Install
 
-### Homebrew (recommended)
+### Homebrew
 
 ```bash
-brew tap c-johannesen/cursorbar
-brew install cursorbar
+brew tap charcoaldev04/cursor-gauge
+brew trust charcoaldev04/cursor-gauge
+brew install --cask cursor-gauge
 ```
 
-Or without adding the tap permanently:
+This installs `Cursor Gauge.app`. The tap is [homebrew-cursor-gauge](https://github.com/CharcoalDev04/homebrew-cursor-gauge). Homebrew 7 will not install a third-party cask until the tap is trusted.
+
+### Download
+
+Download the latest `CursorGauge-*.zip` from [Releases](https://github.com/CharcoalDev04/cursor-gauge/releases), unzip it, and move `Cursor Gauge.app` to `/Applications`. Then open it:
 
 ```bash
-brew install c-johannesen/cursorbar/cursorbar
-```
-
-This installs `CursorBar.app` to `/Applications`. Open it from Applications or run:
-
-```bash
-open -a CursorBar
+open -a "Cursor Gauge"
 ```
 
 ### Build from source
 
 ```bash
-git clone https://github.com/c-johannesen/cursorbar.git
-cd cursorbar
+git clone https://github.com/CharcoalDev04/cursor-gauge.git
+cd cursor-gauge
 bash scripts/install.sh
 ```
 
-This builds CursorBar locally, installs it to `/Applications/CursorBar.app`, and opens it.
+This builds Cursor Gauge locally, installs it to `/Applications/Cursor Gauge.app`, and opens it.
 
 ### Launch later
 
 ```bash
-open -a CursorBar
+open -a "Cursor Gauge"
 ```
 
 Or, if you built from source:
@@ -92,10 +91,10 @@ Agent status is read from local Cursor IDE data (transcripts and `state.vscdb`).
 
 ## Troubleshooting
 
-Check that CursorBar can read your account:
+Check that Cursor Gauge can read your account:
 
 ```bash
-/Applications/CursorBar.app/Contents/MacOS/CursorBar --status
+"/Applications/Cursor Gauge.app/Contents/MacOS/CursorGauge" --status
 ```
 
 Expected output: `OK 42%` (your percentage will differ).
@@ -107,7 +106,7 @@ Common issues:
 | `!` in menu bar | Make sure Cursor is installed and you're signed in, then click **Refresh** |
 | App won't open from Finder | Run `bash scripts/launch.sh` — it clears Gatekeeper quarantine flags |
 | `Swift is not installed` | Run `xcode-select --install` |
-| `No auth token found` | Sign out and back into Cursor, then relaunch CursorBar |
+| `No auth token found` | Sign out and back into Cursor, then relaunch Cursor Gauge |
 
 ## How it works
 
@@ -116,13 +115,13 @@ Common issues:
 2. Derives a session cookie from the JWT
 3. Calls `GET https://cursor.com/api/usage-summary`
 
-The token is read fresh on every refresh and is **never stored** by CursorBar.
+The token is read fresh on every refresh and is **never stored** by Cursor Gauge.
 
 ## Development
 
 ```bash
-git clone https://github.com/c-johannesen/cursorbar.git
-cd cursorbar
+git clone https://github.com/CharcoalDev04/cursor-gauge.git
+cd cursor-gauge
 
 # Build only
 bash scripts/package.sh
@@ -131,13 +130,13 @@ bash scripts/package.sh
 bash scripts/package.sh --install --open
 
 # Verify API access
-.build/release/CursorBar --status
+.build/release/CursorGauge --status
 ```
 
 Project layout:
 
 ```
-Sources/CursorBar/
+Sources/CursorGauge/
   App.swift           # MenuBarExtra UI
   AgentMonitor.swift  # Live agent count & needs-input detection
   TokenProvider.swift # Read auth from Cursor IDE DB
@@ -166,3 +165,5 @@ The `main` branch is protected: only the repository owner can push to or merge i
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+Original work copyright (c) 2026 [c-johannesen](https://github.com/c-johannesen). This fork keeps that copyright notice.

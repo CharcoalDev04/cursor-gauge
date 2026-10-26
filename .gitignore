@@ -2,6 +2,7 @@
 .swiftpm/
 DerivedData/
 *.xcodeproj/
-CursorBar.app/
-CursorBar-*.zip
+Cursor Gauge.app/
+CursorGauge-*.zip
 .DS_Store
+docs/superpowers/

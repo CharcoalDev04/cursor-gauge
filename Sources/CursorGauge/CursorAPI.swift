@@ -360,7 +360,7 @@ enum CursorAPI {
         request.setValue("1", forHTTPHeaderField: "RSC")
         request.setValue("/@\(handle)", forHTTPHeaderField: "Next-Url")
         request.setValue("text/x-component", forHTTPHeaderField: "Accept")
-        request.setValue("CursorBar/1.0", forHTTPHeaderField: "User-Agent")
+        request.setValue("CursorGauge/1.0", forHTTPHeaderField: "User-Agent")
 
         let (data, response) = try await publicProfileSession.data(for: request)
         guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200,

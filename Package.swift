@@ -2,12 +2,12 @@
 import PackageDescription
 
 let package = Package(
-    name: "CursorBar",
+    name: "CursorGauge",
     platforms: [.macOS(.v26)],
     targets: [
         .executableTarget(
-            name: "CursorBar",
-            path: "Sources/CursorBar",
+            name: "CursorGauge",
+            path: "Sources/CursorGauge",
             linkerSettings: [.linkedLibrary("sqlite3")]
         ),
     ]

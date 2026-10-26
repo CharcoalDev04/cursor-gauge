@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 @main
-enum CursorBarMain {
+enum CursorGaugeMain {
     static func main() {
         if CommandLine.arguments.contains("--self-check") {
             UsageMath.selfCheck()
@@ -13,7 +13,7 @@ enum CursorBarMain {
             runStatusCommand()
             return
         }
-        CursorBarApp.main()
+        CursorGaugeApp.main()
     }
 
     static func runStatusCommand() {
@@ -69,7 +69,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
-struct CursorBarApp: App {
+struct CursorGaugeApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var store = UsageStore()
     @StateObject private var updater = UpdateChecker()
