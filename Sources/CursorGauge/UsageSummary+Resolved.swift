@@ -3,10 +3,13 @@ import Foundation
 enum UsageCredits {
     /// Guaranteed minimum included credits for Cursor Models on individual plans ($200).
     static let minimumCursorModelsIncludedCents = 20_000
-    /// Guaranteed minimum included credits for Other Models on individual plans ($400).
-    static let minimumOtherModelsIncludedCents = 40_000
-    /// Floor for the included pool when an individual plan reports no usage yet.
-    static let minimumIncludedCreditsCents = minimumCursorModelsIncludedCents + minimumOtherModelsIncludedCents
+    /// Fallback when `plan.limit` is missing. Pro's live Other Models cap is $20.
+    static let minimumOtherModelsIncludedCents = 2_000
+
+    /// Cursor Models floor plus the Other Models cap (`plan.limit` when Cursor sends it).
+    static func individualPoolCents(otherModelsLimit: Int?) -> Int {
+        minimumCursorModelsIncludedCents + (otherModelsLimit ?? minimumOtherModelsIncludedCents)
+    }
 }
 
 extension UsageSummary {
@@ -32,7 +35,7 @@ extension UsageSummary {
         individualUsage?.onDemand ?? teamUsage?.onDemand
     }
 
-    /// Pro / Ultra style $200+$400 floors. Never applied to Enterprise or team-billed seats.
+    /// Pro-style $200 Cursor Models floor plus the Other Models cap. Never applied to Enterprise or team seats.
     var appliesIndividualCreditFloors: Bool {
         if limitType?.lowercased() == "team" { return false }
         switch resolvedMembershipType.lowercased() {
@@ -75,16 +78,16 @@ extension UsageSummary {
             return overallLimit
         }
 
-        let percent = includedPercentUsed ?? 0
-        if let used = includedUsedCents {
-            let derived = percent > 0 ? Int((Double(used) / (percent / 100.0)).rounded()) : 0
-            if appliesIndividualCreditFloors {
-                return max(derived, UsageCredits.minimumIncludedCreditsCents)
-            }
-            return derived > 0 ? derived : nil
+        if appliesIndividualCreditFloors {
+            return UsageCredits.individualPoolCents(otherModelsLimit: otherModelsLimitCents)
         }
 
-        return appliesIndividualCreditFloors ? UsageCredits.minimumIncludedCreditsCents : nil
+        let percent = includedPercentUsed ?? 0
+        if let used = includedUsedCents, percent > 0 {
+            let derived = Int((Double(used) / (percent / 100.0)).rounded())
+            return derived > 0 ? derived : nil
+        }
+        return nil
     }
 
     /// Other Models dollar cap from `plan.limit`. Nil when the plan is disabled or has no limit.

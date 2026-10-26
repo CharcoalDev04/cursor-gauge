@@ -84,6 +84,8 @@ enum UsageMath {
         precondition(dailyTone(100) == .warm)
         precondition(dailyTone(101) == .hot)
         precondition(usedCents(limit: 20_000, percent: 98) == 19_600)
+        precondition(UsageCredits.individualPoolCents(otherModelsLimit: 2_000) == 22_000)
+        precondition(UsageCredits.individualPoolCents(otherModelsLimit: nil) == 22_000)
         L10n.selfCheck()
         TokenProvider.selfCheck()
     }

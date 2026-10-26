@@ -143,8 +143,7 @@ final class UsageStore: ObservableObject {
         summary?.includedUsedCents
     }
 
-    /// Included pool size: `overall.limit` when present, otherwise used / (percent / 100).
-    /// Individual plans floor to $600; Enterprise / team never use that floor.
+    /// Included pool: `overall.limit` when present, otherwise $200 plus the Other Models cap.
     var includedLimitCreditsCents: Int? {
         summary?.includedLimitCents
     }
