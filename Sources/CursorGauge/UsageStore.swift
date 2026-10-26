@@ -135,7 +135,7 @@ final class UsageStore: ObservableObject {
     }
 
     var planDisplayName: String {
-        summary?.resolvedMembershipType.capitalized ?? "Unknown"
+        summary?.formattedMembershipName ?? "Unknown"
     }
 
     /// Total included credits consumed so far. `breakdown.total` is used amount, not pool size.

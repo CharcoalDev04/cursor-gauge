@@ -1,14 +1,50 @@
 import Foundation
 
 enum UsageCredits {
-    /// Guaranteed minimum included credits for Cursor Models on individual plans ($200).
-    static let minimumCursorModelsIncludedCents = 20_000
-    /// Fallback when `plan.limit` is missing. Pro's live Other Models cap is $20.
-    static let minimumOtherModelsIncludedCents = 2_000
+    /// Minimum Cursor Models (Auto / Composer / Cursor Grok) pool floor by tier, in cents.
+    /// Pro: $200, Pro+: $400, Ultra: $2,000.
+    static func minimumCursorModelsCents(for membershipType: String) -> Int {
+        switch normalizedTier(membershipType) {
+        case "ultra":
+            200_000
+        case "pro_plus":
+            40_000
+        default:
+            20_000
+        }
+    }
 
-    /// Cursor Models floor plus the Other Models cap (`plan.limit` when Cursor sends it).
-    static func individualPoolCents(otherModelsLimit: Int?) -> Int {
-        minimumCursorModelsIncludedCents + (otherModelsLimit ?? minimumOtherModelsIncludedCents)
+    /// Official Other Models (API) monthly allowance by tier, in cents.
+    /// Pro: $20, Pro+: $70, Ultra: $400.
+    static func defaultOtherModelsCents(for membershipType: String) -> Int {
+        switch normalizedTier(membershipType) {
+        case "ultra":
+            40_000
+        case "pro_plus":
+            7_000
+        default:
+            2_000
+        }
+    }
+
+    /// Tier floor for total included pool when usage is 0% or not yet reported.
+    static func minimumIncludedPoolCents(for membershipType: String, otherModelsLimit: Int?) -> Int {
+        let cursorFloor = minimumCursorModelsCents(for: membershipType)
+        let apiCap = otherModelsLimit ?? defaultOtherModelsCents(for: membershipType)
+        return cursorFloor + apiCap
+    }
+
+    static func normalizedTier(_ raw: String) -> String {
+        let cleaned = raw
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+            .replacingOccurrences(of: "-", with: "_")
+            .replacingOccurrences(of: " ", with: "_")
+        if cleaned.contains("ultra") { return "ultra" }
+        if cleaned == "pro+" || cleaned.contains("pro_plus") || cleaned.contains("proplus") {
+            return "pro_plus"
+        }
+        return cleaned
     }
 }
 
@@ -28,6 +64,19 @@ extension UsageSummary {
         return raw.isEmpty ? "unknown" : raw
     }
 
+    var formattedMembershipName: String {
+        switch UsageCredits.normalizedTier(resolvedMembershipType) {
+        case "pro_plus":
+            "Pro+"
+        case "ultra":
+            "Ultra"
+        case "pro":
+            "Pro"
+        default:
+            resolvedMembershipType.capitalized
+        }
+    }
+
     var plan: PlanUsage? { individualUsage?.plan }
     var overall: OverallUsage? { individualUsage?.overall }
 
@@ -35,11 +84,11 @@ extension UsageSummary {
         individualUsage?.onDemand ?? teamUsage?.onDemand
     }
 
-    /// Pro-style $200 Cursor Models floor plus the Other Models cap. Never applied to Enterprise or team seats.
+    /// Individual plans (Pro / Pro+ / Ultra). Never applied to Enterprise or team seats.
     var appliesIndividualCreditFloors: Bool {
         if limitType?.lowercased() == "team" { return false }
-        switch resolvedMembershipType.lowercased() {
-        case "enterprise", "team", "business":
+        switch UsageCredits.normalizedTier(resolvedMembershipType) {
+        case "enterprise", "team", "business", "free", "hobby":
             return false
         default:
             return true
@@ -58,11 +107,10 @@ extension UsageSummary {
         return plan?.apiPercentUsed ?? Self.percent(fromDisplayMessage: namedModelSelectedDisplayMessage)
     }
 
-    /// Blended included-usage percentage. Only from `totalPercentUsed` — the
-    /// display-message strings feed the Cursor Models / Other Models bars instead.
+    /// Blended included-usage percentage. Prefer `totalPercentUsed`, fallback to display message.
     var includedPercentUsed: Double? {
         if isUnlimitedPlan { return nil }
-        return plan?.totalPercentUsed
+        return plan?.totalPercentUsed ?? Self.percent(fromDisplayMessage: autoModelSelectedDisplayMessage)
     }
 
     /// Amount used against the included pool. Prefer `breakdown.total` over `plan.used`:
@@ -73,29 +121,46 @@ extension UsageSummary {
         return nil
     }
 
+    /// Total included pool limit in cents:
+    /// 1. `overall.limit` if present
+    /// 2. `cursorModelsLimitCents + otherModelsLimitCents` when both pools are known
+    /// 3. Derived from `includedUsedCents / (includedPercentUsed / 100)`, floored by the plan's minimum
     var includedLimitCents: Int? {
         if let overallLimit = overall?.limit, overallLimit > 0 {
             return overallLimit
         }
 
-        if appliesIndividualCreditFloors {
-            return UsageCredits.individualPoolCents(otherModelsLimit: otherModelsLimitCents)
-        }
+        let floor = appliesIndividualCreditFloors
+            ? UsageCredits.minimumIncludedPoolCents(
+                for: resolvedMembershipType,
+                otherModelsLimit: otherModelsLimitCents
+            )
+            : 0
 
         let percent = includedPercentUsed ?? 0
-        if let used = includedUsedCents, percent > 0 {
-            let derived = Int((Double(used) / (percent / 100.0)).rounded())
-            return derived > 0 ? derived : nil
+        var derived = 0
+        if let used = includedUsedCents, percent > 0, percent < 100 {
+            derived = Int((Double(used) / (percent / 100.0)).rounded())
         }
-        return nil
+
+        if let cursorLimit = cursorModelsLimitCents, let apiLimit = otherModelsLimitCents {
+            derived = max(derived, cursorLimit + apiLimit)
+        }
+
+        let result = max(derived, floor)
+        return result > 0 ? result : nil
     }
 
-    /// Other Models dollar cap from `plan.limit`. Nil when the plan is disabled or has no limit.
-    /// Cursor Models has no corresponding limit field — never invent one from included − Other Models.
+    /// Other Models dollar cap from `plan.limit`, or tier default ($20 Pro / $70 Pro+ / $400 Ultra) on individual plans.
     var otherModelsLimitCents: Int? {
         guard plan?.enabled != false else { return nil }
-        guard let limit = plan?.limit, limit > 0 else { return nil }
-        return limit
+        if let limit = plan?.limit, limit > 0 {
+            return limit
+        }
+        if appliesIndividualCreditFloors, otherModelsPercentUsed != nil {
+            return UsageCredits.defaultOtherModelsCents(for: resolvedMembershipType)
+        }
+        return nil
     }
 
     var otherModelsUsedCents: Int? {
@@ -103,16 +168,38 @@ extension UsageSummary {
         return UsageMath.usedCents(limit: limit, percent: percent)
     }
 
-    /// The usage-summary payload has no dollar cap for Cursor Models, only `autoPercentUsed`.
-    /// Individual plans use the same $200 floor as the included-pool minimum.
-    var cursorModelsLimitCents: Int? {
-        guard appliesIndividualCreditFloors, cursorModelsPercentUsed != nil else { return nil }
-        return UsageCredits.minimumCursorModelsIncludedCents
-    }
-
+    /// Actual Cursor Models spend when `includedUsedCents` is known (`totalUsed - apiUsed`),
+    /// otherwise derived from the Cursor Models limit and `autoPercentUsed`.
     var cursorModelsUsedCents: Int? {
+        if let totalUsed = includedUsedCents {
+            let apiUsed = otherModelsUsedCents ?? 0
+            return max(totalUsed - apiUsed, 0)
+        }
         guard let limit = cursorModelsLimitCents, let percent = cursorModelsPercentUsed else { return nil }
         return UsageMath.usedCents(limit: limit, percent: percent)
+    }
+
+    /// Cursor Models pool cap derived from actual Cursor Models spend and `autoPercentUsed`,
+    /// floored by the tier minimum ($200 Pro / $400 Pro+ / $2,000 Ultra).
+    var cursorModelsLimitCents: Int? {
+        guard cursorModelsPercentUsed != nil else { return nil }
+        let floor = appliesIndividualCreditFloors
+            ? UsageCredits.minimumCursorModelsCents(for: resolvedMembershipType)
+            : 0
+
+        var derived = 0
+        if let totalUsed = includedUsedCents,
+           let percent = cursorModelsPercentUsed,
+           percent > 0,
+           percent < 100
+        {
+            let apiUsed = otherModelsUsedCents ?? 0
+            let cursorUsed = max(totalUsed - apiUsed, 0)
+            derived = Int((Double(cursorUsed) / (percent / 100.0)).rounded())
+        }
+
+        let result = max(derived, floor)
+        return result > 0 ? result : nil
     }
 
     /// Leading `N` or `N.N` before `%` in Cursor's prose, e.g. "You've used 8% of your included total usage".

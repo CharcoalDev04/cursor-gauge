@@ -6,7 +6,7 @@ APP_NAME="Cursor Gauge"
 PRODUCT="CursorGauge"
 BUILD_DIR="$ROOT/.build/release"
 APP_BUNDLE="$ROOT/$APP_NAME.app"
-VERSION="${VERSION:-2.0.0}"
+VERSION="${VERSION:-2.0.1}"
 BUILD_NUMBER="${BUILD_NUMBER:-1}"
 
 cd "$ROOT"

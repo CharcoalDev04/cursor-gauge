@@ -14,9 +14,9 @@ Cursor Gauge is a fork of [CursorBar](https://github.com/c-johannesen/cursorbar)
 - **Configurable menu bar** — Settings chooses gauge, quota percent, agent badge, today percent, remaining money, and overspend. The dropdown still shows the full panel
 - **Languages** — System, Thai, or English. Dates and currency follow the Mac
 - **Daily utilization** — today's spend, from local midnight, measured against a daily budget (total quota / working days in the billing cycle). Near the daily budget turns yellow; over 100% turns red
-- **Pool breakdown** — shows the included balance, the Composer / Cursor Models pool ($200 individual floor), and the API / Other Models pool (`plan.limit`, $20 on Pro)
+- **Pool breakdown** — shows the included balance, the Composer / Cursor Models pool (`$200` Pro / `$400` Pro+ / `$2,000` Ultra floor, scaled dynamically from actual usage and percent), and the API / Other Models pool (`plan.limit`, or `$20` Pro / `$70` Pro+ / `$400` Ultra)
 - **Models & tokens** — top models by spend this cycle, plus cycle and all-time token totals from your public Cursor profile
-- **Overspend tracking** — shows charges beyond the included pool ($200 + the Other Models cap on individual plans) and on-demand spend with budget/remaining
+- **Overspend tracking** — shows charges beyond the included pool and on-demand spend with budget/remaining
 - **Billing cycle info** — current period dates and days until reset
 - **Auto-refresh** — on launch and every 5 minutes, with a manual Refresh button anytime
 - **Built-in updates** — checks GitHub Releases on startup, with a manual check button and one-click update from Settings
