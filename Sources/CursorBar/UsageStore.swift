@@ -1,16 +1,24 @@
 import Foundation
 import SwiftUI
 
+enum LoadError: Equatable {
+    case notAuthenticated
+    case invalidResponse
+    case http(Int)
+    case other(String)
+}
+
 @MainActor
 final class UsageStore: ObservableObject {
     @Published private(set) var summary: UsageSummary?
     @Published private(set) var todaySpendCents: Int?
+    @Published private(set) var topModelSpends: [UsageMath.ModelSpend] = []
     @Published private(set) var periodTokenCount: Int?
     @Published private(set) var lifetimeTokenCount: Int?
     @Published private(set) var profileHandle: String?
     @Published private(set) var lastUpdated: Date?
     @Published private(set) var isLoading = false
-    @Published private(set) var errorMessage: String?
+    @Published private(set) var loadError: LoadError?
 
     private var refreshTimer: Timer?
 
@@ -28,15 +36,18 @@ final class UsageStore: ObservableObject {
         do {
             summary = try await CursorAPI.fetchUsageSummary()
             lastUpdated = Date()
-            errorMessage = nil
+            loadError = nil
+        } catch let error as CursorAPIError {
+            loadError = Self.loadError(from: error)
         } catch {
-            errorMessage = error.localizedDescription
+            loadError = .other(error.localizedDescription)
         }
 
-        // Daily spend and profile tokens are supplementary; failures must not break the main display.
+        // Daily spend, model ranks, and profile tokens are supplementary; failures must not break the main display.
         let cycleStart = billingCycleStartDate
         async let todaySpendResult: Int? = try? await CursorAPI.fetchTodaySpendCents(cycleStart: cycleStart)
         async let profileTokensResult: PublicProfileTokens? = try? await CursorAPI.fetchPublicProfileTokens(periodStart: cycleStart)
+        async let modelsResult = Self.fetchModelSpends(cycleStart)
 
         todaySpendCents = await todaySpendResult
         if let cycleStart,
@@ -45,6 +56,8 @@ final class UsageStore: ObservableObject {
         {
             todaySpendCents = includedUsed
         }
+
+        topModelSpends = await modelsResult
 
         if let profileTokens = await profileTokensResult {
             profileHandle = profileTokens.handle
@@ -57,9 +70,42 @@ final class UsageStore: ObservableObject {
         periodTokenCount != nil || lifetimeTokenCount != nil
     }
 
+    private static func fetchModelSpends(_ cycleStart: Date?) async -> [UsageMath.ModelSpend] {
+        guard let cycleStart else { return [] }
+        return (try? await CursorAPI.fetchTopModelSpends(cycleStart: cycleStart)) ?? []
+    }
+
+    private static func loadError(from error: CursorAPIError) -> LoadError {
+        switch error {
+        case .notAuthenticated: .notAuthenticated
+        case .invalidResponse: .invalidResponse
+        case .httpError(let statusCode): .http(statusCode)
+        }
+    }
+
+    var statusMessages: [String] {
+        var seen = Set<String>()
+        return [summary?.autoModelSelectedDisplayMessage, summary?.namedModelSelectedDisplayMessage]
+            .compactMap { message -> String? in
+                let trimmed = message?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                guard !trimmed.isEmpty, seen.insert(trimmed).inserted else { return nil }
+                return trimmed
+            }
+    }
+
+    var teamOnDemand: OnDemandUsage? {
+        guard let onDemand = summary?.teamUsage?.onDemand else { return nil }
+        guard onDemand.isEnabled || onDemand.usedCents > 0 else { return nil }
+        return onDemand
+    }
+
+    var timeZoneLabel: String {
+        UsageMath.gmtLabel()
+    }
+
     /// Plain-text fallback for the menu bar while data is unavailable.
     var menuBarLabel: String {
-        if errorMessage != nil, summary == nil {
+        if loadError != nil, summary == nil {
             return "!"
         }
         guard let includedPercentUsed = quotaPercentUsed else {

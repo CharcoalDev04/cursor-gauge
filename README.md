@@ -8,10 +8,10 @@ No browser tab, no manual cookie paste — CursorBar reads your session from the
 
 ## Features
 
-- **Agents badge** — circular indicator to the left of the quota gauge showing live agent count (local + cloud): green with count when running, yellow with count when agents need your input (tool approval or plan ready to build), red `0` when idle; dropdown lists agents needing input and opens them in Cursor when clicked
-- **Menu bar gauges** — quota gauge (`Q`) and daily utilization gauge (`D`), plus a red overspend amount when overspending
-- **Configurable menu bar** — toggle each element (agents, quota, daily utilization, overspend) via the gear button in the dropdown
-- **Daily utilization** — today's spend measured against a daily budget (total quota / working days in the billing cycle)
+- **Menu bar icon** — a system gauge symbol plus the figures you turn on in Settings. A yellow badge means an agent needs input. The quota percent turns red when you are over. With every switch off, only the gauge remains
+- **Configurable menu bar** — Settings chooses gauge, quota percent, agent badge, today percent, remaining money, and overspend. The dropdown still shows the full panel
+- **Languages** — System, Thai, or English. Dates and currency follow the Mac
+- **Daily utilization** — today's spend, from local midnight, measured against a daily budget (total quota / working days in the billing cycle)
 - **Usage breakdown** — dollar amounts used, total credits (including bonus), and remaining balance
 - **Overspend tracking** — shows charges beyond included credits and on-demand spend with budget/remaining
 - **Billing cycle info** — current period dates and days until reset
@@ -21,7 +21,7 @@ No browser tab, no manual cookie paste — CursorBar reads your session from the
 
 ## Requirements
 
-- macOS 14 (Sonoma) or later
+- macOS 26 or later
 - [Cursor IDE](https://cursor.com) installed and signed in on this Mac
 - Swift 6 — only needed if [building from source](#build-from-source)
 
@@ -72,21 +72,19 @@ bash scripts/launch.sh
 
 | Menu bar | Click to open dropdown |
 |----------|------------------------|
-| `[1] Q 42% D 85%` | Agents badge, quota/daily gauges, overspend (when applicable), plan details, refresh & quit |
+| Gauge and the figures you enabled | Click to open the panel |
 
-**Agents badge** (left of the gauges):
+**Menu bar**
 
-- Green with a number — that many agents are running (local + cloud)
-- Yellow with a number — that many agents need your input (tool approval or plan ready to build)
-- Red `0` — no agents running
+- Yellow badge — that many agents need your input
+- Red quota percent — included usage is at or over the limit, or there is overspend
+- Dim gauge — nothing is running and quota is 0%
 
 Agent status is read from local Cursor IDE data (transcripts and `state.vscdb`). Cloud agent status and plan/input flags can lag the UI by a minute or two because the IDE debounces writes to disk. Click an agent under **Needs input** to focus it in the Cursor app.
 
-**Color in dropdown** (progress bar and percentage):
+**Color in the panel**
 
-- Green — under 70% used
-- Yellow — 70–89%
-- Red — 90% or higher
+- Red value — that meter is at 100% or the daily budget is over 100%
 
 **Auto-refresh:** immediately on launch, then every **5 minutes** while the app is running.
 

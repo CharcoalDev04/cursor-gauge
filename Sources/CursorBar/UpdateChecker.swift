@@ -40,7 +40,7 @@ final class UpdateChecker: ObservableObject {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.0.0"
 
     private static let latestReleaseURL =
-        URL(string: "https://api.github.com/repos/c-johannesen/cursorbar/releases/latest")!
+        URL(string: "https://api.github.com/repos/CharcoalDev04/cursorbar/releases/latest")!
 
     init() {
         Task { await checkForUpdates(announceResult: false) }

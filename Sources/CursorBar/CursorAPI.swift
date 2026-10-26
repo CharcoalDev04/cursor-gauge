@@ -80,6 +80,7 @@ struct UsageEventsPage: Decodable, Sendable {
 }
 
 struct UsageEvent: Decodable, Sendable {
+    let model: String?
     let chargedCents: Double?
     let tokenUsage: TokenUsage?
 
@@ -125,7 +126,19 @@ enum CursorAPI {
         }
     }
 
-    /// Sums usage-event cost for today's Daily window, in cents.
+    /// Top models by charged cents from the billing-cycle start through now.
+    /// Stops after 20 pages. A short read still returns a ranking and does not throw.
+    static func fetchTopModelSpends(cycleStart: Date) async throws -> [UsageMath.ModelSpend] {
+        var credentials = try TokenProvider.loadSessionCredentials()
+        do {
+            return try await requestTopModelSpends(credentials: credentials, cycleStart: cycleStart)
+        } catch CursorAPIError.notAuthenticated {
+            credentials = try TokenProvider.loadSessionCredentials()
+            return try await requestTopModelSpends(credentials: credentials, cycleStart: cycleStart)
+        }
+    }
+
+    /// Sums usage-event cost for today's window, in cents.
     /// Starts at local midnight, or at `cycleStart` when the billing cycle reset later the same day.
     static func fetchTodaySpendCents(cycleStart: Date? = nil) async throws -> Int {
         var credentials = try TokenProvider.loadSessionCredentials()
@@ -156,10 +169,40 @@ enum CursorAPI {
         let startMs = String(Int(windowStart.timeIntervalSince1970 * 1000))
         let endMs = String(Int(Date().timeIntervalSince1970 * 1000))
 
+        let events = try await collectEvents(
+            credentials: credentials,
+            startMs: startMs,
+            endMs: endMs,
+            maxPages: 10
+        )
+        let totalCents = events.reduce(0) { $0 + $1.costCents }
+        return Int(totalCents.rounded())
+    }
+
+    private static func requestTopModelSpends(
+        credentials: SessionCredentials,
+        cycleStart: Date
+    ) async throws -> [UsageMath.ModelSpend] {
+        let events = try await collectEvents(
+            credentials: credentials,
+            startMs: String(Int(cycleStart.timeIntervalSince1970 * 1000)),
+            endMs: String(Int(Date().timeIntervalSince1970 * 1000)),
+            maxPages: 20
+        )
+        return UsageMath.topModelSpends(events: events.map {
+            ($0.model ?? "", $0.chargedCents ?? $0.costCents)
+        })
+    }
+
+    private static func collectEvents(
+        credentials: SessionCredentials,
+        startMs: String,
+        endMs: String,
+        maxPages: Int
+    ) async throws -> [UsageEvent] {
         let pageSize = 100
-        let maxPages = 10
-        var totalCents = 0.0
         var page = 1
+        var events: [UsageEvent] = []
 
         while page <= maxPages {
             let result = try await requestUsageEventsPage(
@@ -169,15 +212,13 @@ enum CursorAPI {
                 page: page,
                 pageSize: pageSize
             )
-            totalCents += result.usageEventsDisplay.reduce(0) { $0 + $1.costCents }
-
+            events.append(contentsOf: result.usageEventsDisplay)
             if page * pageSize >= result.totalUsageEventsCount || result.usageEventsDisplay.isEmpty {
                 break
             }
             page += 1
         }
-
-        return Int(totalCents.rounded())
+        return events
     }
 
     private static func requestUsageEventsPage(
@@ -259,7 +300,7 @@ enum CursorAPI {
         let handle = try await requestProfileHandle(credentials: credentials)
         let daily = try await requestProfileActivityCounts(credentials: credentials, handle: handle)
         let totalTokens = daily.reduce(0) { $0 + $1.count }
-        let periodStartDay = periodStart.map(utcDateString)
+        let periodStartDay = periodStart.map { UsageMath.dayString($0, timeZone: .current) }
         let periodTokens = daily.reduce(0) { sum, day in
             guard let periodStartDay, day.date >= periodStartDay else { return sum }
             return sum + day.count
@@ -408,12 +449,6 @@ enum CursorAPI {
         return nil
     }
 
-    private static func utcDateString(_ date: Date) -> String {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(secondsFromGMT: 0) ?? TimeZone(identifier: "GMT")!
-        let parts = calendar.dateComponents([.year, .month, .day], from: date)
-        return String(format: "%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
-    }
 }
 
 private struct ProfileActivityDay {
