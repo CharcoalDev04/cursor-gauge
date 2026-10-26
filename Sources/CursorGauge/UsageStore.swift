@@ -5,6 +5,10 @@ enum LoadError: Equatable {
     case notAuthenticated
     case invalidResponse
     case http(Int)
+    case databaseNotFound
+    case tokenNotFound
+    case invalidToken
+    case keychainDenied
     case other(String)
 }
 
@@ -38,6 +42,8 @@ final class UsageStore: ObservableObject {
             lastUpdated = Date()
             loadError = nil
         } catch let error as CursorAPIError {
+            loadError = Self.loadError(from: error)
+        } catch let error as TokenProviderError {
             loadError = Self.loadError(from: error)
         } catch {
             loadError = .other(error.localizedDescription)
@@ -80,6 +86,15 @@ final class UsageStore: ObservableObject {
         case .notAuthenticated: .notAuthenticated
         case .invalidResponse: .invalidResponse
         case .httpError(let statusCode): .http(statusCode)
+        }
+    }
+
+    private static func loadError(from error: TokenProviderError) -> LoadError {
+        switch error {
+        case .databaseNotFound: .databaseNotFound
+        case .tokenNotFound: .tokenNotFound
+        case .invalidToken: .invalidToken
+        case .keychainDenied: .keychainDenied
         }
     }
 
@@ -165,6 +180,14 @@ final class UsageStore: ObservableObject {
 
     var otherModelsUsedCreditsCents: Int? {
         summary?.otherModelsUsedCents
+    }
+
+    var cursorModelsLimitCreditsCents: Int? {
+        summary?.cursorModelsLimitCents
+    }
+
+    var cursorModelsUsedCreditsCents: Int? {
+        summary?.cursorModelsUsedCents
     }
 
     var cursorModelsStatusColor: Color {

@@ -126,8 +126,8 @@ struct PanelView: View {
                     .disabled(updater.isUpdating)
                 }
             }
-            if let statusMessage = updater.statusMessage {
-                Text(statusMessage)
+            if let notice = updater.notice {
+                Text(L10n.updateNotice(notice, language))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -178,7 +178,7 @@ struct PanelView: View {
                 }
             }
             ForEach(store.statusMessages, id: \.self) { message in
-                Text(message)
+                Text(L10n.usageNote(message, language))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -332,15 +332,21 @@ struct PanelView: View {
         var items: [StatCell] = []
         if let percent = store.dailyUtilizationPercent {
             let detail = dollarPair(store.todaySpendCents, store.dailyBudgetCents)
-            items.append(StatCell(id: "today", title: L10n.t("today", language), value: percentText(percent), detail: detail, alert: percent > 100))
+            items.append(StatCell(
+                id: "today",
+                title: L10n.t("today", language),
+                value: percentText(percent),
+                detail: detail,
+                tone: UsageMath.dailyTone(percent)
+            ))
         }
         if let percent = store.cursorModelsPercentUsed {
             items.append(StatCell(
                 id: "composer",
                 title: L10n.t("composer", language),
                 value: percentText(percent),
-                detail: "",
-                alert: percent >= 100
+                detail: dollarPair(store.cursorModelsUsedCreditsCents, store.cursorModelsLimitCreditsCents),
+                tone: percent >= 100 ? .hot : .plain
             ))
         }
         if let percent = store.otherModelsPercentUsed {
@@ -349,7 +355,7 @@ struct PanelView: View {
                 title: L10n.t("api", language),
                 value: percentText(percent),
                 detail: dollarPair(store.otherModelsUsedCreditsCents, store.otherModelsLimitCreditsCents),
-                alert: percent >= 100
+                tone: percent >= 100 ? .hot : .plain
             ))
         }
         items.append(StatCell(
@@ -357,7 +363,7 @@ struct PanelView: View {
             title: L10n.t("agents", language),
             value: "\(agents.totalRunning)",
             detail: L10n.machines(agents.localRunningCount, agents.cloudRunningCount, language),
-            alert: false
+            tone: .plain
         ))
         return items
     }
@@ -411,6 +417,14 @@ struct PanelView: View {
         }
     }
 
+    private func toneColor(_ tone: UsageMath.DailyTone) -> Color {
+        switch tone {
+        case .plain: .primary
+        case .warm: .yellow
+        case .hot: .red
+        }
+    }
+
     private func teamLine(_ team: OnDemandUsage) -> String {
         if let limit = team.limit {
             return "\(UsageStore.formatDollars(cents: team.usedCents)) / \(UsageStore.formatDollars(cents: limit))"
@@ -430,13 +444,12 @@ struct PanelView: View {
             Text(stat.value)
                 .font(.system(size: 16, weight: .semibold))
                 .monospacedDigit()
-                .foregroundStyle(stat.alert ? Color.red : Color.primary)
-            if !stat.detail.isEmpty {
-                Text(stat.detail)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
+                .foregroundStyle(toneColor(stat.tone))
+            Text(stat.detail.isEmpty ? " " : stat.detail)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .opacity(stat.detail.isEmpty ? 0 : 1)
         }
         .padding(8)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -461,7 +474,7 @@ private struct StatCell: Identifiable {
     let title: String
     let value: String
     let detail: String
-    let alert: Bool
+    let tone: UsageMath.DailyTone
 }
 
 @MainActor

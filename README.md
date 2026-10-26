@@ -107,12 +107,13 @@ Common issues:
 | App won't open from Finder | Run `bash scripts/launch.sh` — it clears Gatekeeper quarantine flags |
 | `Swift is not installed` | Run `xcode-select --install` |
 | `No auth token found` | Sign out and back into Cursor, then relaunch Cursor Gauge |
+| `Could not parse auth token` | Update Cursor Gauge. Current Cursor seals the login token; signing in again does not turn it back into a JWT. If macOS asks, allow Keychain access to **Cursor Safe Storage** |
 
 ## How it works
 
 1. Reads `cursorAuth/accessToken` from Cursor's local SQLite database  
    `~/Library/Application Support/Cursor/User/globalStorage/state.vscdb`
-2. Derives a session cookie from the JWT
+2. If Cursor sealed the token (`cursor-safe-storage:v1:`), decrypts it with the **Cursor Safe Storage** keychain item, then derives a session cookie from the JWT
 3. Calls `GET https://cursor.com/api/usage-summary`
 
 The token is read fresh on every refresh and is **never stored** by Cursor Gauge.

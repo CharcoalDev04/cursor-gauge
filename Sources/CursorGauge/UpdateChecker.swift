@@ -1,7 +1,16 @@
 import AppKit
 import Foundation
 
-enum UpdateError: Error, LocalizedError {
+enum UpdateNotice: Equatable {
+    case upToDate(String)
+    case checkFailed(UpdateError)
+    case downloading(String)
+    case installing
+    case relaunching
+    case installFailed(UpdateError)
+}
+
+enum UpdateError: Error, LocalizedError, Equatable {
     case requestFailed
     case noAsset
     case badArchive
@@ -34,7 +43,7 @@ final class UpdateChecker: ObservableObject {
     @Published private(set) var availableUpdate: Release?
     @Published private(set) var isChecking = false
     @Published private(set) var isUpdating = false
-    @Published private(set) var statusMessage: String?
+    @Published private(set) var notice: UpdateNotice?
 
     static let currentVersion: String =
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.0.0"
@@ -51,7 +60,7 @@ final class UpdateChecker: ObservableObject {
         guard !isChecking, !isUpdating else { return }
         isChecking = true
         if announceResult {
-            statusMessage = nil
+            notice = nil
         }
         defer { isChecking = false }
 
@@ -80,12 +89,12 @@ final class UpdateChecker: ObservableObject {
             } else {
                 availableUpdate = nil
                 if announceResult {
-                    statusMessage = "Up to date (v\(Self.currentVersion))"
+                    notice = .upToDate(Self.currentVersion)
                 }
             }
         } catch {
             if announceResult {
-                statusMessage = "Update check failed: \(error.localizedDescription)"
+                notice = .checkFailed(error as? UpdateError ?? .requestFailed)
             }
         }
     }
@@ -93,7 +102,7 @@ final class UpdateChecker: ObservableObject {
     func installUpdate() async {
         guard let update = availableUpdate, !isUpdating else { return }
         isUpdating = true
-        statusMessage = "Downloading v\(update.version)…"
+        notice = .downloading(update.version)
 
         do {
             let bundleURL = Bundle.main.bundleURL
@@ -114,17 +123,17 @@ final class UpdateChecker: ObservableObject {
                 throw UpdateError.badArchive
             }
 
-            statusMessage = "Installing…"
+            notice = .installing
             try? await Self.runProcess("/usr/bin/xattr", ["-cr", newApp.path])
             try FileManager.default.removeItem(at: bundleURL)
             try FileManager.default.copyItem(at: newApp, to: bundleURL)
 
-            statusMessage = "Relaunching…"
+            notice = .relaunching
             try await Self.runProcess("/usr/bin/open", ["-n", bundleURL.path])
             NSApplication.shared.terminate(nil)
         } catch {
             isUpdating = false
-            statusMessage = "Update failed: \(error.localizedDescription)"
+            notice = .installFailed(error as? UpdateError ?? .processFailed)
         }
     }
 

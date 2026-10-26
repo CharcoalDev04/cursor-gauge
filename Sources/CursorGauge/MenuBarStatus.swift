@@ -21,6 +21,7 @@ struct MenuBarStatusView: View {
     var quotaText: String?
     var quotaIsOver: Bool
     var dailyText: String?
+    var dailyTone: UsageMath.DailyTone = .plain
     var remainingText: String?
     var overspendText: String?
     var agentBadge: String?
@@ -52,16 +53,16 @@ struct MenuBarStatusView: View {
                 badge(agentBadge)
             }
             if showQuota, let quotaText {
-                figure(quotaText, alert: quotaIsOver)
+                figure(quotaText, tone: quotaIsOver ? .hot : .plain)
             }
             if showDaily, let dailyText {
-                figure(dailyText, alert: false)
+                figure(dailyText, tone: dailyTone)
             }
             if showRemaining, let remainingText {
-                figure(remainingText, alert: false)
+                figure(remainingText, tone: .plain)
             }
             if showOverspend, let overspendText {
-                figure("+\(overspendText)", alert: true)
+                figure("+\(overspendText)", tone: .hot)
             }
         }
         .foregroundStyle(ink)
@@ -90,12 +91,20 @@ struct MenuBarStatusView: View {
             .background(Capsule().fill(Color.yellow))
     }
 
-    private func figure(_ text: String, alert isAlert: Bool) -> some View {
+    private func figure(_ text: String, tone: UsageMath.DailyTone) -> some View {
         Text(text)
-            .font(.system(size: 13, weight: .semibold))
+            .font(.system(size: 11, weight: .medium))
             .monospacedDigit()
-            .foregroundStyle(isAlert ? alert : ink)
+            .foregroundStyle(menuColor(tone))
             .opacity(dimmed ? 0.45 : 1)
+    }
+
+    private func menuColor(_ tone: UsageMath.DailyTone) -> Color {
+        switch tone {
+        case .plain: ink
+        case .warm: .yellow
+        case .hot: alert
+        }
     }
 }
 
@@ -180,6 +189,7 @@ extension MenuBarStatusView {
             quotaText: quotaText,
             quotaIsOver: (quota ?? 0) >= 100 || store.hasOverspend,
             dailyText: dailyText,
+            dailyTone: store.dailyUtilizationPercent.map(UsageMath.dailyTone) ?? .plain,
             remainingText: remainingText,
             overspendText: overspendText,
             agentBadge: agents.needsInputCount > 0 ? AgentMonitorFormatting.compactCount(agents.needsInputCount) : nil,

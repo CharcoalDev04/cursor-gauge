@@ -36,6 +36,21 @@ enum UsageMath {
         return String(format: "%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
     }
 
+    enum DailyTone: Equatable {
+        case plain, warm, hot
+    }
+
+    /// Near a full day is warm. Past the daily budget is hot.
+    static func dailyTone(_ percent: Double) -> DailyTone {
+        if percent > 100 { return .hot }
+        if percent >= 90 { return .warm }
+        return .plain
+    }
+
+    static func usedCents(limit: Int, percent: Double) -> Int {
+        Int((Double(limit) * percent / 100).rounded())
+    }
+
     static func gmtLabel(timeZone: TimeZone = .current, date: Date = Date()) -> String {
         let seconds = timeZone.secondsFromGMT(for: date)
         let sign = seconds >= 0 ? "+" : "-"
@@ -64,6 +79,12 @@ enum UsageMath {
         precondition(dayString(evening, timeZone: TimeZone(secondsFromGMT: 0)!) == "1970-01-01")
         precondition(dayString(evening, timeZone: TimeZone(secondsFromGMT: 7 * 3600)!) == "1970-01-02")
         precondition(gmtLabel(timeZone: TimeZone(secondsFromGMT: 7 * 3600)!, date: evening) == "GMT+7")
+        precondition(dailyTone(89) == .plain)
+        precondition(dailyTone(90) == .warm)
+        precondition(dailyTone(100) == .warm)
+        precondition(dailyTone(101) == .hot)
+        precondition(usedCents(limit: 20_000, percent: 98) == 19_600)
         L10n.selfCheck()
+        TokenProvider.selfCheck()
     }
 }

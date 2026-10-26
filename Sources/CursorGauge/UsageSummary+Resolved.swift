@@ -97,7 +97,19 @@ extension UsageSummary {
 
     var otherModelsUsedCents: Int? {
         guard let limit = otherModelsLimitCents, let percent = otherModelsPercentUsed else { return nil }
-        return Int((Double(limit) * percent / 100.0).rounded())
+        return UsageMath.usedCents(limit: limit, percent: percent)
+    }
+
+    /// The usage-summary payload has no dollar cap for Cursor Models, only `autoPercentUsed`.
+    /// Individual plans use the same $200 floor as the included-pool minimum.
+    var cursorModelsLimitCents: Int? {
+        guard appliesIndividualCreditFloors, cursorModelsPercentUsed != nil else { return nil }
+        return UsageCredits.minimumCursorModelsIncludedCents
+    }
+
+    var cursorModelsUsedCents: Int? {
+        guard let limit = cursorModelsLimitCents, let percent = cursorModelsPercentUsed else { return nil }
+        return UsageMath.usedCents(limit: limit, percent: percent)
     }
 
     /// Leading `N` or `N.N` before `%` in Cursor's prose, e.g. "You've used 8% of your included total usage".
