@@ -2,13 +2,13 @@ import Foundation
 
 enum UsageCredits {
     /// Minimum Cursor Models (Auto / Composer / Cursor Grok) pool floor by tier, in cents.
-    /// Pro: $200, Pro+: $400, Ultra: $2,000.
+    /// Pro: $200 (1x), Pro+: $600 (3x), Ultra: $4,000 (20x).
     static func minimumCursorModelsCents(for membershipType: String) -> Int {
         switch normalizedTier(membershipType) {
         case "ultra":
-            200_000
+            400_000
         case "pro_plus":
-            40_000
+            60_000
         default:
             20_000
         }

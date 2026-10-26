@@ -85,8 +85,8 @@ enum UsageMath {
         precondition(dailyTone(101) == .hot)
         precondition(usedCents(limit: 20_000, percent: 98) == 19_600)
         precondition(UsageCredits.minimumIncludedPoolCents(for: "pro", otherModelsLimit: nil) == 22_000)
-        precondition(UsageCredits.minimumIncludedPoolCents(for: "pro_plus", otherModelsLimit: nil) == 47_000)
-        precondition(UsageCredits.minimumIncludedPoolCents(for: "ultra", otherModelsLimit: nil) == 240_000)
+        precondition(UsageCredits.minimumIncludedPoolCents(for: "pro_plus", otherModelsLimit: nil) == 67_000)
+        precondition(UsageCredits.minimumIncludedPoolCents(for: "ultra", otherModelsLimit: nil) == 440_000)
         L10n.selfCheck()
         TokenProvider.selfCheck()
     }
