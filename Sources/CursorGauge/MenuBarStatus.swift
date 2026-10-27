@@ -25,6 +25,7 @@ struct MenuBarStatusView: View {
     var remainingText: String?
     var overspendText: String?
     var agentBadge: String?
+    var agentNeedsInput: Bool = false
     var dimmed: Bool
     var lightText: Bool
 
@@ -50,7 +51,7 @@ struct MenuBarStatusView: View {
             if drawGauge {
                 gauge
             } else if showAgents, let agentBadge {
-                badge(agentBadge)
+                badge(agentBadge, alert: agentNeedsInput)
             }
             if showQuota, let quotaText {
                 figure(quotaText, tone: quotaIsOver ? .hot : .plain)
@@ -69,26 +70,28 @@ struct MenuBarStatusView: View {
     }
 
     private var gauge: some View {
-        ZStack(alignment: .topTrailing) {
-            Image(systemName: "gauge.with.dots.needle.50percent")
-                .font(.system(size: 14, weight: .medium))
-                .opacity(dimmed ? 0.45 : 1)
-                .frame(width: 16, height: 16)
-            if showAgents, let agentBadge {
-                badge(agentBadge)
-                    .offset(x: 7, y: -6)
+        let showsBadge = showAgents && agentBadge != nil
+        return Image(systemName: "gauge.with.dots.needle.50percent")
+            .font(.system(size: 14, weight: .medium))
+            .opacity(dimmed ? 0.45 : 1)
+            .frame(width: 16, height: 16)
+            .overlay(alignment: .topTrailing) {
+                if let agentBadge, showAgents {
+                    badge(agentBadge, alert: agentNeedsInput)
+                        .offset(x: 7, y: -5)
+                }
             }
-        }
-        .frame(width: 22, height: 18)
+            .padding(.vertical, showsBadge ? 6 : 1)
+            .padding(.horizontal, showsBadge ? 8 : 3)
     }
 
-    private func badge(_ text: String) -> some View {
+    private func badge(_ text: String, alert: Bool) -> some View {
         Text(text)
             .font(.system(size: 8, weight: .bold, design: .rounded))
             .foregroundStyle(.black)
             .padding(.horizontal, 3)
             .frame(minWidth: 12, minHeight: 12)
-            .background(Capsule().fill(Color.yellow))
+            .background(Capsule().fill(alert ? Color.yellow : Color(white: 0.82)))
     }
 
     private func figure(_ text: String, tone: UsageMath.DailyTone) -> some View {
@@ -192,7 +195,10 @@ extension MenuBarStatusView {
             dailyTone: store.dailyUtilizationPercent.map(UsageMath.dailyTone) ?? .plain,
             remainingText: remainingText,
             overspendText: overspendText,
-            agentBadge: agents.needsInputCount > 0 ? AgentMonitorFormatting.compactCount(agents.needsInputCount) : nil,
+            agentBadge: AgentMonitorFormatting.compactCount(
+                agents.needsInputCount > 0 ? agents.needsInputCount : agents.totalRunning
+            ),
+            agentNeedsInput: agents.needsInputCount > 0,
             dimmed: idle && (quota ?? 0) == 0 && store.summary?.isUnlimitedPlan != true,
             lightText: lightText
         )
